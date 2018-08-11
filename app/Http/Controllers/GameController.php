@@ -70,9 +70,9 @@ class GameController extends Controller
         return $params;
     }
 
-    public function reShuffle(Request $request) {
+    public function reShuffle(Request $request) {        
         $response = $this->shuffleWord( session('current_active_word') );
-        // $request->session()->keep(['current_active_word']);
+        $request->session()->keep(['current_active_word']);
 
         echo json_encode( $response );
     }
