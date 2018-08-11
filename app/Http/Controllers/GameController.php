@@ -41,10 +41,10 @@ class GameController extends Controller
 
             $request->session()->put('banks', $words);
         } else {
-            $words = session('banks');            
+            $words = array_values(session('banks'));            
         }
 
-        $random_word = $words[ random_int(0, count($words)) ];
+        $random_word = $words[ random_int(0, (count($words)-1)) ];
         $request->session()->flash('current_active_word', $random_word);
         $request->session()->put('current_level', $current_level);
 
@@ -61,13 +61,12 @@ class GameController extends Controller
 
     private function shuffleWord($guess_word=null) {
         $str_to_array = str_split($guess_word);
-        shuffle($str_to_array);
-
-        $params = [
-            'words' => $str_to_array
+        $secret_str = str_split(session('current_active_word'));        
+        shuffle($str_to_array);        
+    
+        return [
+            'words' => $str_to_array === $secret_str ? shuffle($str_to_array) : $str_to_array
         ];
-
-        return $params;
     }
 
     public function reShuffle(Request $request) {        
@@ -92,8 +91,9 @@ class GameController extends Controller
             
             $word_key = array_keys($words, $current_active_word);
             
-            unset($words[ $word_key[0] ]);
-            array_values($words); // reindex            
+            if (count($word_key)>0) {
+                unset($words[ $word_key[0] ]);                
+            }
 
             if (count($words) > 0) {
                 $request->session()->put('banks', $words);                

@@ -157,7 +157,7 @@
 
             if (response.message) {
                 var curr_alert_cls;
-                if (response.message.match(/Correct/)) {
+                if (response.message.match(/Correct|Level/g)) {
                     curr_alert_cls = 'alert-success';
                     $('#btn-answer').attr("disabled", "disabled");
                     $('#btn-reshuffle').attr("disabled", "disabled");
