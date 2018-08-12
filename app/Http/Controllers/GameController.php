@@ -10,11 +10,11 @@ use App\PlayerStat;
 
 class GameController extends Controller
 {    
-    public function __construct() {
-        
-    }    
+    public function __construct() {}    
 
     public function generateRandomWords(Request $request) {
+        // $request->session()->flush();
+        // print_r(session('banks')); exit;
         if (Auth::check()) {
             $ps = PlayerStat::join('users', 'player_stats.user_id', '=', 'users.id')
                                 ->select('player_stats.*', 'users.email')
@@ -43,6 +43,8 @@ class GameController extends Controller
         } else {
             $words = array_values(session('banks'));            
         }
+
+        // print_r(session('banks')); exit;
 
         $random_word = $words[ random_int(0, (count($words)-1)) ];
         $request->session()->flash('current_active_word', $random_word);
