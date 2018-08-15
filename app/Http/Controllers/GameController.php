@@ -9,17 +9,22 @@ use Illuminate\Support\Facades\Auth;
 use App\Exceptions\Handler;
 use App\Bank;
 use App\PlayerStat;
+use App\Repositories\BankRepository;
+use App\Repositories\PlayerStatsRepository;
 
 class GameController extends Controller
 {    
-    public function __construct() {}    
+    protected $playerstats;
+    protected $bank;
+
+    public function __construct(Bank $bank, PlayerStat $playerstats) {
+        $this->playerstats = new PlayerStatsRepository($playerstats);
+        $this->bank = new BankRepository($bank);
+    }    
 
     public function generateRandomWords(Request $request) {        
         if (Auth::check()) {
-            $ps = PlayerStat::join('users', 'player_stats.user_id', '=', 'users.id')
-                                ->select('player_stats.*', 'users.email')
-                                ->where('player_stats.user_id', '=', Auth::user()->id)
-                                ->get();
+            $ps = $this->playerstats->show(Auth::user()->id);
             
             foreach($ps as $item) {}
             $stats = !empty($item) ? json_decode($item) : new stdClass();
@@ -29,11 +34,7 @@ class GameController extends Controller
         $current_level_words = $stats->current_level_words ?? session('current_level_words') ?? [];
 
         if (empty(session('banks'))) {
-            $banks = Bank::select('word', 'level')
-                        ->where('level', '=', $current_level)
-                        ->whereNotIn('word', $current_level_words)
-                        ->orderBy('word', 'ASC')
-                        ->get();
+            $banks = $this->bank->getWordsByLevel($current_level, $current_level_words);
     
             foreach($banks as $bank) {
                 $item = json_decode($bank);
@@ -80,7 +81,7 @@ class GameController extends Controller
     }
 
     public function checkAnswer(Request $request) {
-        try {            
+        try {
             $current_active_word = session('current_active_word');
             $messages = [];
             $words = session('banks');
