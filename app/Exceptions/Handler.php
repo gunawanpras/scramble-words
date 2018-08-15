@@ -45,7 +45,19 @@ class Handler extends ExceptionHandler
      * @return \Illuminate\Http\Response
      */
     public function render($request, Exception $exception)
-    {
+    {        
+        if ($this->isHttpException($exception)) {            
+            switch ($exception->getStatusCode()) {
+                case 404:
+                    return redirect('invalid_route');
+                    break;
+                
+                default:
+                    // return redirect('invalid_route')->withError('');
+                    break;
+            }
+        }
+
         return parent::render($request, $exception);
     }
 }

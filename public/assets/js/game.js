@@ -1,3 +1,5 @@
+"use strict";
+
 var game = {};
 
 game.generateWords = function() {
@@ -21,9 +23,7 @@ game.generateWords = function() {
             });
 
             $('#answerbox').val('');
-            $('#btn-answer').removeAttr("disabled");
-            $('#btn-reshuffle').removeAttr("disabled");
-            $('#btn-im-done').removeAttr("disabled");
+            $('#btn-answer, #btn-reshuffle, #btn-im-done, #btn-refresh-game').removeAttr("disabled");            
             $('#btn-next-riddles').fadeOut('slow');
         }
     });
@@ -62,45 +62,62 @@ game.checkAnswer = function() {
         dataType: "json"
     }
 
-    this.fireAjax(params, function (data) {
+    this.fireAjax(params, function (data) {        
         var response = data;
-
-        if (response.message) {
-            var curr_alert_cls;
-            if (response.message.match(/Correct|Level/g)) {
-                curr_alert_cls = 'alert-success';
-                $('#btn-answer').attr("disabled", "disabled");
-                $('#btn-reshuffle').attr("disabled", "disabled");
-                $('#btn-next-riddles').fadeIn('slow');
-
-            } else if (response.message.match(/Incorrect/)) {
-                curr_alert_cls = 'alert-danger';
-            }
-            
-            $('#game-alert').html(
-                                '<div class="alert '+ curr_alert_cls +' alert-dismissible" style="margin-top: 1em; display: none" role="alert"> \
-                                <a href="#" class="close" data-dismiss="alert" aria-hidden="true">&times;</a> Your answer is ' + response.message +' \
-                                </div>');
-
-            $('#game-alert .alert').fadeIn('slow', function () {
-                window.setTimeout(function() {
-                    $('#game-alert .alert').fadeOut('slow');
-                }, 4000);
-            });
-        }  
+        
+        game.generateAlerts(response);
     });    
 }
 
-game.fireAjax = function (params, callback) {
-    $.ajax(params)            
-    
-    .always(function(data, textStatus, jqXHR){                 
-        callback(data);
-    })
+game.generateAlerts = function (response) {
+    var curr_alert_cls;
+    var div_alert = '';
 
-    .fail(function(data) {
-        console.log("error", data.responseText)
-    })
+    $.each(response.message, function (k, v) {
+        if (v.match(/Correct|Level/g)) {
+            curr_alert_cls = 'alert-success';
+            $('#btn-answer, #btn-reshuffle').attr("disabled", "disabled");            
+            $('#btn-next-riddles').fadeIn('slow');
+
+        } else if (response.status.match(/ERROR/) || v.match(/Incorrect/)) {
+            curr_alert_cls = 'alert-danger';
+        }
+
+        div_alert += '<div class="alert '+ curr_alert_cls +' alert-dismissible" style="margin-top: 1em; display: none" role="alert"> \
+        <a href="#" class="close" data-dismiss="alert" aria-hidden="true">&times;</a>' + v +' \
+        </div>';
+    });            
+    
+    $('#game-alert').html(div_alert);
+
+    $('#game-alert .alert').fadeIn('slow', function () {
+        window.setTimeout(function() {
+            $('#game-alert .alert').fadeOut('slow');
+        }, 4000);
+    });
+}
+
+game.refreshGame = function () {
+    var params = {
+        url: '/refresh_game',
+        method: "GET",        
+        dataType: "json"
+    }
+
+    this.fireAjax(params, function (data) {        
+        var response = data;        
+        game.generateAlerts(response);
+    });
+
+    $('#collapseExample').trigger('shown.bs.collapse');    
+}
+
+game.fireAjax = function (params, responseCallback) {
+    $.ajax(params)
+    .promise()
+    .then(responseCallback, function (data, textStatus, err) {
+        console.log(textStatus + ' : ' + err);        
+    });        
 }
 
 $(function () {    
@@ -109,11 +126,15 @@ $(function () {
             game.generateWords();
         });
         
-        $('#btn-reshuffle, #btn-im-done').fadeIn("slow");        
+        $('#btn-reshuffle, #btn-im-done, #btn-refresh-game').fadeIn("slow");        
     });
     
     $('#btn-reshuffle').on('click', function() {
         game.reshuffle();
+    });
+
+    $('#btn-refresh-game').on('click', function() {
+        game.refreshGame();
     });
     
     $('#btn-answer').on('click', function() {

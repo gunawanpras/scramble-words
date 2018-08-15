@@ -16,6 +16,8 @@ Route::get('home', 'HomeController@home');
 Route::get('get_words', 'GameController@generateRandomWords');
 Route::get('reshuffle', 'GameController@reShuffle');
 Route::get('check_answer', 'GameController@checkAnswer');
+Route::get('refresh_game', 'GameController@refreshTheGame');
+Route::get('invalid_route', 'GameController@invalidRoute');
 
 Route::get('admin/home', 'admin/AdminController@home');
 Route::post('admin/login', 'admin/LoginController@login');

@@ -28,6 +28,7 @@
                     <button id="btn-start" type="button" class="btn btn-primary" data-toggle="collapse" href="#collapseExample" role="button" aria-expanded="false" aria-controls="collapseExample">Start</button>
                     <a id="btn-im-done" href="{{ url('/') }}" type="button" class="btn btn-danger btn-lg mx-1 float-left" style="display:none" disabled>I'm done</a>
                     <button id="btn-reshuffle" type="button" class="btn btn-primary btn-lg mx-1 float-left" role="button" style="display:none" disabled>Re-shuffle</button>                    
+                    <button id="btn-refresh-game" type="button" class="btn btn-dark btn-lg mx-1 float-left" role="button" style="display:none" disabled>Refresh The Game</button>
                 </div>
             </div>
             @if (Auth::check())

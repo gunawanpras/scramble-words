@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Request as RequestFacades;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Auth;
+use App\Exceptions\Handler;
 use App\Bank;
 use App\PlayerStat;
 
@@ -12,9 +14,7 @@ class GameController extends Controller
 {    
     public function __construct() {}    
 
-    public function generateRandomWords(Request $request) {
-        // $request->session()->flush();
-        // print_r(session('banks')); exit;
+    public function generateRandomWords(Request $request) {        
         if (Auth::check()) {
             $ps = PlayerStat::join('users', 'player_stats.user_id', '=', 'users.id')
                                 ->select('player_stats.*', 'users.email')
@@ -32,6 +32,7 @@ class GameController extends Controller
             $banks = Bank::select('word', 'level')
                         ->where('level', '=', $current_level)
                         ->whereNotIn('word', $current_level_words)
+                        ->orderBy('word', 'ASC')
                         ->get();
     
             foreach($banks as $bank) {
@@ -58,13 +59,13 @@ class GameController extends Controller
 
         $params = $this->shuffleWord($random_word);
 
-        echo json_encode($params);
+        echo response($params)->getContent();
     }
 
     private function shuffleWord($guess_word=null) {
         $str_to_array = str_split($guess_word);
         $secret_str = str_split(session('current_active_word'));        
-        shuffle($str_to_array);        
+        shuffle($str_to_array);
     
         return [
             'words' => $str_to_array === $secret_str ? shuffle($str_to_array) : $str_to_array
@@ -75,50 +76,54 @@ class GameController extends Controller
         $response = $this->shuffleWord( session('current_active_word') );
         $request->session()->keep(['current_active_word']);
 
-        echo json_encode( $response );
+        echo response($response)->getContent();
     }
 
     public function checkAnswer(Request $request) {
-        $current_active_word = session('current_active_word');
-        $messages = '';
-        $words = session('banks');
-        
-        if ($request->guess_word === $current_active_word) {
-            $messages = 'Correct! Congratulations!';
-
-            /**
-             * Validation
-             * If user made a corrects answer, then pop-out temporary banks of array
-             */
+        try {            
+            $current_active_word = session('current_active_word');
+            $messages = [];
+            $words = session('banks');
             
-            $word_key = array_keys($words, $current_active_word);
-            
-            if (count($word_key)>0) {
-                unset($words[ $word_key[0] ]);                
-            }
+            if ($request->guess_word === $current_active_word) {
+                $messages[] = 'Your answer is Correct! Congratulations!';
 
-            if (count($words) > 0) {
-                $request->session()->put('banks', $words);                
-            } else {
-                $request->session()->forget('banks');
-                $request->session()->forget('current_level_words');
+                /**
+                 * Validation
+                 * If user made a corrects answer, then pop-out temporary banks of array
+                 */
                 
-                $request->session()->put('current_level', intval(session('current_level') + 1));
-                $messages = 'Level ' . session('current_level');
+                $word_key = array_keys($words, $current_active_word);
+                
+                if (count($word_key)>0) {
+                    unset($words[ $word_key[0] ]);                
+                }
+
+                if (count($words) > 0) {
+                    $request->session()->put('banks', $words);                
+                } else {
+                    $request->session()->forget('banks');
+                    $request->session()->forget('current_level_words');
+                    
+                    $request->session()->put('current_level', intval(session('current_level') + 1));
+                    $messages[] = 'Congratulations! You\'ve reached Level ' . session('current_level') . '!';
+                }
+
+            } else {
+                $messages[] = 'Your answer is Incorrect!';
+                $request->session()->keep(['current_active_word']);
             }
 
-        } else {
-            $messages = 'Incorrect!';
-            $request->session()->keep(['current_active_word']);
-        }
+            if (Auth::check()) {
+                $this->saveLoggedinPlayerSession();
+            } else {
+                $this->saveGuestPlayerSession();
+            }
 
-        if (Auth::check()) {
-            $this->saveLoggedinPlayerSession();
-        } else {
-            $this->saveGuestPlayerSession();
-        }
-
-        echo self::templResponse($messages);
+            self::templResponse($messages);
+        } catch(Exception $e) {
+            self::templResponse($e->getMessage(), "ERROR", $e->getCode());
+        }        
     }
 
     private function saveLoggedinPlayerSession() {
@@ -129,11 +134,29 @@ class GameController extends Controller
         
     }
 
+    public function refreshTheGame(Request $request) {
+        try {
+            $request->session()->forget('banks');        
+            $request->session()->forget('current_active_word');
+            $request->session()->forget('current_level_words');
+            $request->session()->forget('current_level');            
+
+            self::templResponse("Refreshing game success!");
+        } catch(Exception $e) {
+            self::templResponse($e->getMessage(), "ERROR", $e->getCode());
+        }
+        
+    }
+
     private static function templResponse($messages="", $status="OK", $http_status_code=200) {
-        return json_encode([
+        echo response([
             "code" => $http_status_code,
             "status" => $status,
             "message" => $messages
-        ], $http_status_code);
+        ], $http_status_code)->getContent();
+    }
+
+    public function invalidRoute() {
+        self::templResponse("Invalid Route", "ERROR", 404);
     }
 }
